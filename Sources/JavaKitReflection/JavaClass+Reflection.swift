@@ -49,4 +49,7 @@ extension JavaClass {
 
   @JavaMethod
   public func isInterface() -> Bool
+
+  @JavaMethod
+  public func getClasses() -> [JavaClass<JavaObject>?]
 }

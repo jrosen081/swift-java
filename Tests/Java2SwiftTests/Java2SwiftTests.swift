@@ -15,6 +15,7 @@
 import JavaKit
 import Java2SwiftLib
 import JavaKitVM
+import JavaRuntime
 import XCTest // NOTE: Workaround for https://github.com/swiftlang/swift-java/issues/43
 
 /// Handy reference to the JVM abstraction.
@@ -23,6 +24,9 @@ var jvm: JavaVirtualMachine {
     try .shared()
   }
 }
+
+@JavaClass("java.lang.ProcessBuilder")
+struct ProcessBuilder {}
 
 class Java2SwiftTests: XCTestCase {
   func testJavaLangObjectMapping() async throws {
@@ -43,6 +47,17 @@ class Java2SwiftTests: XCTestCase {
           @JavaMethod
           public func wait() throws
         """
+      ]
+    )
+  }
+
+  func testNestedSubclasses() async throws {
+    try assertTranslatedClass(
+      ProcessBuilder.self,
+      swiftTypeName: "ProcessBuilder",
+      expectedChunks: [
+        "import JavaKit",
+        ""
       ]
     )
   }
@@ -69,6 +84,7 @@ func assertTranslatedClass<JavaClassType: AnyJavaObject>(
   translator.translatedClasses = translatedClasses
   translator.translatedClasses[javaType.fullJavaClassName] = (swiftTypeName, nil, true)
 
+
   translator.startNewFile()
   let translatedDecls = translator.translateClass(
     try JavaClass<JavaObject>(
@@ -84,6 +100,7 @@ func assertTranslatedClass<JavaClassType: AnyJavaObject>(
     """
 
   for expectedChunk in expectedChunks {
+    print(swiftFileText)
     if swiftFileText.contains(expectedChunk) {
       continue
     }
