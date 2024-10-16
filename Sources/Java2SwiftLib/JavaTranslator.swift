@@ -190,15 +190,6 @@ extension JavaTranslator {
     let fullName = javaClass.getCanonicalName()
     let swiftTypeName = try! getSwiftTypeNameFromJavaClassName(fullName)
 
-    for internalClass in javaClass.getClasses() {
-      if let internalClass {
-        print("Translating name \(internalClass.getName())")
-        let internalJavaClassName = internalClass.getName()
-        let translatedInternalSwiftName = internalJavaClassName.replacing("$", with: ".")
-        translatedClasses[translatedInternalSwiftName] = ("\(swiftTypeName).\(internalClass.getSimpleName())", nil, true)
-      }
-    }
-
     // Superclass.
     let extends: String
     if !javaClass.isInterface(),
@@ -240,18 +231,6 @@ extension JavaTranslator {
 
     // Members
     var members: [DeclSyntax] = []
-
-    members.append(
-      contentsOf: javaClass.getClasses().compactMap {
-        $0.flatMap { clazz in
-          let text = translateClass(clazz)
-          text.map { t in t.formatted().description  }
-            .forEach { t in print(t) }
-          print()
-          return text
-        }
-      }.flatMap(\.self)
-    )
 
     // Fields
     var staticFields: [Field] = []
@@ -356,9 +335,17 @@ extension JavaTranslator {
 
     // Format the class declaration.
     classDecl = classDecl.formatted(using: format).cast(DeclSyntax.self)
-    
+
+    let subClassDecls = javaClass.getClasses().compactMap {
+      $0.flatMap { clazz in
+        return translateClass(clazz)
+      }
+    }.flatMap(\.self)
+
+    var baseDecls: [DeclSyntax] = [classDecl] + subClassDecls
+
     if staticMethods.isEmpty && staticFields.isEmpty {
-      return [classDecl]
+      return baseDecls
     }
 
     // Translate static members.
@@ -393,7 +380,7 @@ extension JavaTranslator {
     )
 
     if staticMembers.isEmpty {
-      return [classDecl]
+      return baseDecls
     }
 
     // Specify the specialization arguments when needed.
@@ -411,7 +398,7 @@ extension JavaTranslator {
     }
     """ as DeclSyntax).formatted(using: format).cast(DeclSyntax.self)
 
-    return [classDecl, extDecl]
+    return baseDecls + [extDecl]
   }
 }
 
