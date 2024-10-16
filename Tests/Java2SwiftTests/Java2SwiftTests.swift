@@ -37,7 +37,7 @@ class Java2SwiftTests: XCTestCase {
         "import JavaKit",
         """
         @JavaClass("java.lang.Object")
-        public struct MyJavaObject {
+        public struct `MyJavaObject` {
         """,
         """
           @JavaMethod
@@ -63,7 +63,16 @@ class Java2SwiftTests: XCTestCase {
       ],
       expectedChunks: [
         "import JavaKit",
-        ""
+        """
+        extension ProcessBuilder {
+          @JavaClass("java.lang.ProcessBuilder.Redirect")
+          public struct `Redirect` {
+        """,
+        """
+        extension ProcessBuilder.Redirect {
+          @JavaClass("java.lang.ProcessBuilder.Redirect.Type")
+          public struct `Type` {
+        """
       ]
     )
   }
@@ -106,7 +115,6 @@ func assertTranslatedClass<JavaClassType: AnyJavaObject>(
     """
 
   for expectedChunk in expectedChunks {
-    print(swiftFileText)
     if swiftFileText.contains(expectedChunk) {
       continue
     }

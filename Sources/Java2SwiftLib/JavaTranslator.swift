@@ -189,6 +189,15 @@ extension JavaTranslator {
   package func translateClass(_ javaClass: JavaClass<JavaObject>) -> [DeclSyntax] {
     let fullName = javaClass.getCanonicalName()
     let swiftTypeName = try! getSwiftTypeNameFromJavaClassName(fullName)
+    let (swiftParentType, swiftInnermostTypeName) = swiftTypeName.splitSwiftTypeName()
+
+    // If the swift parent type has not been translated, don't try to translate this one
+    if let swiftParentType,
+       !translatedClasses.contains(where: { _, value in value.swiftType == swiftParentType })
+    {
+      logUntranslated("Unable to translate '\(fullName)' parent class: \(swiftParentType) not found")
+      return []
+    }
 
     // Superclass.
     let extends: String
@@ -311,13 +320,12 @@ extension JavaTranslator {
       staticMemberWhereClause = ""
     }
 
-    // Emit the struct declaration describing the java class.
-    let (swiftParentType, swiftInnermostTypeName) = swiftTypeName.splitSwiftTypeName()
+    // Emit the struct declaration describing the java class. Add backticks to the name since the type might interfere with Swift type names
     let classOrInterface: String = javaClass.isInterface() ? "JavaInterface" : "JavaClass";
     var classDecl =
       """
       @\(raw:classOrInterface)(\(literal: fullName)\(raw: extends)\(raw: interfacesStr))
-      public struct \(raw: swiftInnermostTypeName)\(raw: genericParameterClause) {
+      public struct `\(raw: swiftInnermostTypeName)`\(raw: genericParameterClause) {
       \(raw: members.map { $0.description }.joined(separator: "\n\n"))
       }
       """ as DeclSyntax
@@ -336,13 +344,14 @@ extension JavaTranslator {
     // Format the class declaration.
     classDecl = classDecl.formatted(using: format).cast(DeclSyntax.self)
 
+    // Add all subclass decls after the class decl (since it is in an extension)
     let subClassDecls = javaClass.getClasses().compactMap {
       $0.flatMap { clazz in
         return translateClass(clazz)
       }
     }.flatMap(\.self)
 
-    var baseDecls: [DeclSyntax] = [classDecl] + subClassDecls
+    let baseDecls: [DeclSyntax] = [classDecl] + subClassDecls
 
     if staticMethods.isEmpty && staticFields.isEmpty {
       return baseDecls
