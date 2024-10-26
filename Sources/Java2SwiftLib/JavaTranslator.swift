@@ -545,10 +545,28 @@ extension JavaTranslator {
     let typeName = try getSwiftTypeNameAsString(javaField.getGenericType()!, outerOptional: true)
     let fieldAttribute: AttributeSyntax = javaField.isStatic ? "@JavaStaticField" : "@JavaField";
     let swiftFieldName = javaField.getName().escapedSwiftName
-    return """
-      \(fieldAttribute)(isFinal: \(raw: javaField.isFinal))
-      public var \(raw: swiftFieldName): \(raw: typeName)
+
+    if typeName.starts(with: "Optional<") {
+      let innerTypeName = typeName.split(separator: "<").last!.split(separator: ">").first!
+      return """
+      \(fieldAttribute)
+      public var __\(raw: swiftFieldName): \(raw: typeName)
+      
+      public var \(raw: swiftFieldName): \(raw: innerTypeName)? {
+        if let value = __\(raw: swiftFieldName),
+           value.isPresent() {
+          return value.get()
+        } else {
+          return nil
+        }
+      }
       """
+    } else {
+      return """
+        \(fieldAttribute)
+        public var \(raw: swiftFieldName): \(raw: typeName)
+        """
+    }
   }
 
   package func translateToEnumValue(name: String, enumFields: [Field]) -> [DeclSyntax] {

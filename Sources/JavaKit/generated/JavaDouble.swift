@@ -46,6 +46,9 @@ public struct JavaDouble {
   public func doubleValue() -> Double
 
   @JavaMethod
+  public func describeConstable() -> JavaOptional<JavaDouble>?
+
+  @JavaMethod
   public func isNaN() -> Bool
 
   @JavaMethod

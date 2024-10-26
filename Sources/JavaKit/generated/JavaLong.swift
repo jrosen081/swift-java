@@ -43,6 +43,9 @@ public struct JavaLong {
   public func doubleValue() -> Double
 
   @JavaMethod
+  public func describeConstable() -> JavaOptional<JavaLong>?
+
+  @JavaMethod
   public func getClass() -> JavaClass<JavaObject>?
 
   @JavaMethod

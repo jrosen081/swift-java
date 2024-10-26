@@ -43,6 +43,9 @@ public struct JavaInteger {
   public func doubleValue() -> Double
 
   @JavaMethod
+  public func describeConstable() -> JavaOptional<JavaInteger>?
+
+  @JavaMethod
   public func getClass() -> JavaClass<JavaObject>?
 
   @JavaMethod

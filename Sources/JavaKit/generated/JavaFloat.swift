@@ -49,6 +49,9 @@ public struct JavaFloat {
   public func doubleValue() -> Double
 
   @JavaMethod
+  public func describeConstable() -> JavaOptional<JavaFloat>?
+
+  @JavaMethod
   public func isNaN() -> Bool
 
   @JavaMethod
