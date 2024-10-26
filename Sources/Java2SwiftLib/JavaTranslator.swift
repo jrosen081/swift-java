@@ -540,33 +540,48 @@ extension JavaTranslator {
       \(methodAttribute)\(raw: accessModifier)func \(raw: swiftMethodName)\(raw: genericParameterClause)(\(raw: parametersStr))\(raw: throwsStr)\(raw: resultTypeStr)\(raw: whereClause)
       """
   }
-    
+
+  package func createOptionalField(fieldAttribute: AttributeSyntax, swiftFieldName: String, typeName: String, isFinal: Bool) -> DeclSyntax? {
+    if typeName.starts(with: "JavaOptional<") {
+      let innerTypeName = typeName.split(separator: "<").last!.split(separator: ">").first!
+
+      let setter: DeclSyntax = isFinal ? "" : """
+      
+        set {
+          __\(raw: swiftFieldName) = self.javaClass.of(newValue).as(\(raw: typeName).self)
+        }
+      """
+
+      return """
+      
+      public var \(raw: swiftFieldName): \(raw: innerTypeName)? {
+        get {
+          return __\(raw: swiftFieldName).value
+        }
+        \(setter)
+      }
+      """
+    } else {
+      return nil
+    }
+  }
+
   package func translateField(_ javaField: Field) throws -> DeclSyntax {
     let typeName = try getSwiftTypeNameAsString(javaField.getGenericType()!, outerOptional: true)
     let fieldAttribute: AttributeSyntax = javaField.isStatic ? "@JavaStaticField" : "@JavaField";
     let swiftFieldName = javaField.getName().escapedSwiftName
+    let isFinal = javaField.isFinal
 
-    if typeName.starts(with: "Optional<") {
-      let innerTypeName = typeName.split(separator: "<").last!.split(separator: ">").first!
-      return """
-      \(fieldAttribute)
-      public var __\(raw: swiftFieldName): \(raw: typeName)
-      
-      public var \(raw: swiftFieldName): \(raw: innerTypeName)? {
-        if let value = __\(raw: swiftFieldName),
-           value.isPresent() {
-          return value.get()
-        } else {
-          return nil
-        }
-      }
+    let optionalField = createOptionalField(fieldAttribute: fieldAttribute,
+                                            swiftFieldName: swiftFieldName,
+                                            typeName: typeName,
+                                            isFinal: isFinal)
+    let baseFieldName = if let optionalField { "__\(swiftFieldName)" } else { swiftFieldName }
+    return """
+      \(fieldAttribute)(isFinal: \(raw: isFinal))
+      public var \(raw: baseFieldName): \(raw: typeName)
+      \(optionalField ?? "")
       """
-    } else {
-      return """
-        \(fieldAttribute)
-        public var \(raw: swiftFieldName): \(raw: typeName)
-        """
-    }
   }
 
   package func translateToEnumValue(name: String, enumFields: [Field]) -> [DeclSyntax] {
